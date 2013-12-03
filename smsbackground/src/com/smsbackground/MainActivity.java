@@ -86,18 +86,17 @@ public class MainActivity extends Activity {
                     }
                 }
 
-                presentDevice
-                        .setName(device.getName() == null ? "<no_name_configured>"
-                                : device.getName());
+                presentDevice.setName(device.getName() == null ? device
+                        .getAddress() : device.getName());
                 presentDevice.setLastScannedTime(System.currentTimeMillis());
 
                 storageEditor.updateLastScannedTime(presentDevice);
             }
             else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 Log.d(tag, "Discovery is finished .. ");
-                performVisibilityChecksBeforeMakingListViewVisible();
                 runBlueToothDiscoveryAfter(10000);
             }
+            performVisibilityChecksBeforeMakingListViewVisible();
             adapter.notifyDataSetChanged();
         }
 

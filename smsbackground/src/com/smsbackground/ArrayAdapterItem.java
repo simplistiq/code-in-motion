@@ -49,6 +49,7 @@ public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
         if (convertView == null) {
             LayoutInflater inflater = ((Activity) context).getLayoutInflater();
             convertView = inflater.inflate(resource, parent, false);
+
             final ViewHolder viewHolder = new ViewHolder();
             viewHolder.device = device;
             checkbox = (CheckBox) convertView
@@ -88,8 +89,7 @@ public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
 
         TextView textViewItem = (TextView) convertView
                 .findViewById(R.id.textViewItem);
-        textViewItem.setText(device.getName() != null ? device.getName()
-                : "<no_name_bluetooth>");
+        textViewItem.setText(device.getName());
         textViewItem.setTag(device.getAddress());
 
         TextView textViewDetectedTimeItem = (TextView) convertView
