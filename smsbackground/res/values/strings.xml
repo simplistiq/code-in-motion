@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">Blue Tooth Scanner</string>
+    <string name="app_name">Auto Reply SMS</string>
+    <string name="global_switch">Turn Bluetooth SMS</string>   
+    <string name="scan_select_message">Please select the devices you want the app to auto-reply to SMS when driving. The application would
+        automatically sent the configured SMS reply if any of these devices are detectable when an SMS arrives.</string>
+    <string name="welcome_message_part_1">SMS REPLY</string>
+    <string name="welcome_message_part_2">Now, start your car and select the devices by starting the discovery. \n\nAny time your phone is in the 
+        vicinity of these devices all incoming SMS would be automatically replied with your reply message.</string>       
+    <string name="sms_text_title_message">SMS REPLY</string>
+    <string name="bluetooth_device_title_message">Devices found</string>
+    <string name="text_hint">I am driving right now. </string>         
+    <string name="scan_now">Scan New Devices</string>
     <string name="action_settings">Settings</string>
-    <string name="number_of_bluetooth_devices_selected">%1$s device selected</string>
+    <string name="switch_action_settings">Main Switch</string>
+    <string name="number_of_bluetooth_devices_selected">%1$s device(s) selected</string>
 </resources>

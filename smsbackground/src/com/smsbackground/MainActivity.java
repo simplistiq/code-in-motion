@@ -1,10 +1,12 @@
 package com.smsbackground;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import android.app.Activity;
-import android.app.ProgressDialog;
+import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -15,18 +17,37 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ListView;
+import android.widget.Switch;
+import android.widget.TextView;
+
+import com.google.gson.Gson;
 
 public class MainActivity extends Activity {
 
     private SharedPreferences preferences;
     private BluetoothAdapter blueToothAdaptor;
-    private final String tag = "Bluetooth";
-    private final List<ScannableDevice> bluetoothDevices = new ArrayList<ScannableDevice>();
     private ArrayAdapterItem adapter;
-    private ProgressDialog progressScanDialog;
+    private TextView statusCheckedView;
+    private Switch discoverySwitch;
+    private Switch actionBarMainSwitch;
     private Handler blueToothScanHandler;
-    private boolean toFurtherScan;
+    private Handler actionBarInitializationHandler;
+
+    private final String tag = "Bluetooth";
+
+    private final List<ScannableDevice> bluetoothDevices = new ArrayList<ScannableDevice>();
+
+    private boolean allowNewDiscovery = false;
+    private boolean allowSms = false;
+
+    private SmsMessageBroadcastReceiver smsMessageBroadcastReceiver;
 
     private final BroadcastReceiver blueToothReceiver = new BroadcastReceiver() {
 
@@ -39,25 +60,27 @@ public class MainActivity extends Activity {
                 Log.d(tag, "Device found " + device.getName());
 
                 ScannableDevice presentDevice = null;
-                for (ScannableDevice alreadyDiscoveredDevice : bluetoothDevices) {
-                    if (device.getAddress().equals(
-                            alreadyDiscoveredDevice.getAddress())) {
-                        presentDevice = alreadyDiscoveredDevice;
-                        break;
+                synchronized (bluetoothDevices) {
+                    for (ScannableDevice alreadyDiscoveredDevice : bluetoothDevices) {
+                        if (device.getAddress().equals(
+                                alreadyDiscoveredDevice.getAddress())) {
+                            presentDevice = alreadyDiscoveredDevice;
+                            break;
+                        }
                     }
-                }
 
-                if (presentDevice == null) {
-                    Log.d(tag,
-                            "New device discovered .. Adding "
-                                    + device.getName());
-                    presentDevice = new ScannableDevice();
-                    presentDevice.setAddress(device.getAddress());
-                    presentDevice.setScanAllowed(Boolean.TRUE);
-                    bluetoothDevices.add(presentDevice);
-                }
-                else {
-                    Log.d(tag, "This device is already in the list .. ");
+                    if (presentDevice == null) {
+                        Log.d(tag, "New device discovered " + device.getName());
+                        presentDevice = new ScannableDevice();
+                        presentDevice.setAddress(device.getAddress());
+                        presentDevice.setScanAllowed(Boolean.TRUE);
+                        if (allowNewDiscovery) {
+                            bluetoothDevices.add(presentDevice);
+                        }
+                    }
+                    else {
+                        Log.d(tag, "This device is already in the list .. ");
+                    }
                 }
 
                 presentDevice
@@ -67,13 +90,8 @@ public class MainActivity extends Activity {
             }
             else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 Log.d(tag, "Discovery is finished .. ");
-                dismissDialog();
-                if (toFurtherScan) {
-                    runAfter(12000);
-                }
-                else {
-                    removeCallbacks();
-                }
+                performVisibilityChecksBeforeMakingListViewVisible();
+                runBlueToothDiscoveryAfter(10000);
             }
             adapter.notifyDataSetChanged();
         }
@@ -86,13 +104,6 @@ public class MainActivity extends Activity {
         public void run() {
             if (blueToothAdaptor != null) {
                 if (!blueToothAdaptor.isDiscovering()) {
-                    dismissDialog();
-                    progressScanDialog = new ProgressDialog(MainActivity.this);
-                    progressScanDialog
-                            .setTitle("Scanning BlueTooth Devices .. ");
-                    progressScanDialog.setMessage("Please wait .. ");
-                    progressScanDialog.show();
-
                     startBlueToothDiscovery();
                 }
                 else {
@@ -101,6 +112,70 @@ public class MainActivity extends Activity {
             }
         }
     };
+
+    Runnable actionBarAndOtherInitialization = new Runnable() {
+
+        @Override
+        public void run() {
+            actionBarMainSwitch = (Switch) findViewById(R.id.action_bar_switch);
+            actionBarMainSwitch
+                    .setOnCheckedChangeListener(actionBarMainSwitchListener);
+            actionBarMainSwitch.setChecked(allowSms);
+
+            performVisibilityChecksBeforeMakingListViewVisible();
+            adapter.notifyDataSetChanged();
+        }
+    };
+
+    OnCheckedChangeListener discoverySwitchListener = new OnCheckedChangeListener() {
+
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView,
+                boolean isChecked) {
+            allowNewDiscovery = isChecked;
+            doCheckForBlueToothAndSetInPreferencesIfAllowed(isChecked,
+                    "bluetooth.discovery.allowed", buttonView);
+            if (isChecked) {
+                runBlueToothDiscoveryAfter(1000);
+            }
+        }
+    };
+
+    OnCheckedChangeListener actionBarMainSwitchListener = new OnCheckedChangeListener() {
+
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView,
+                boolean isChecked) {
+            doCheckForBlueToothAndSetInPreferencesIfAllowed(isChecked,
+                    "sms.app.allowed", buttonView);
+            if (isChecked) {
+                smsMessageBroadcastReceiver.register();
+            }
+            else {
+                smsMessageBroadcastReceiver.unRegister();
+            }
+        }
+    };
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main, menu);
+        runActionBarInitializationAfter(4000);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+        case R.id.action_settings:
+            startActivityForResult(new Intent(
+                    android.provider.Settings.ACTION_SETTINGS), 0);
+            return true;
+        default:
+            return super.onOptionsItemSelected(item);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -120,20 +195,32 @@ public class MainActivity extends Activity {
 
             preferences = getPreferences(MODE_PRIVATE);
 
+            statusCheckedView = (TextView) findViewById(R.id.selectedItemsStatusView);
+
             adapter = new ArrayAdapterItem(this, R.layout.list_view_row_item,
-                    bluetoothDevices, preferences);
+                    bluetoothDevices, preferences, statusCheckedView);
 
             ListView listView = (ListView) findViewById(R.id.listView);
             listView.setItemsCanFocus(Boolean.FALSE);
             listView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
             listView.setAdapter(adapter);
 
+            discoverySwitch = (Switch) findViewById(R.id.discovery_monitored_switch);
+            discoverySwitch.setOnCheckedChangeListener(discoverySwitchListener);
+
             IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
             filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
             registerReceiver(blueToothReceiver, filter);
 
+            smsMessageBroadcastReceiver = new SmsMessageBroadcastReceiver(
+                    getApplicationContext(), preferences);
+
             if (blueToothScanHandler == null) {
                 blueToothScanHandler = new Handler();
+            }
+
+            if (actionBarInitializationHandler == null) {
+                actionBarInitializationHandler = new Handler();
             }
         }
     }
@@ -141,48 +228,99 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         Log.d(tag, "Resuming discovery");
-        toFurtherScan = true;
         super.onResume();
-        runAfter(5000);
-    }
 
-    @Override
-    protected void onPause() {
-        Log.d(tag, "Pausing discovery");
-        super.onPause();
-        toFurtherScan = false;
-        cancelBlueToothDiscovery();
+        cancelDiscovery();
+
+        loadUpPreferences();
+
+        if (allowSms) {
+            runBlueToothDiscoveryAfter(10000);
+        }
     }
 
     @Override
     protected void onDestroy() {
-        Log.d(tag, "Cancel discovery");
         super.onDestroy();
-        toFurtherScan = false;
-        cancelBlueToothDiscovery();
+        cancelDiscovery();
+        smsMessageBroadcastReceiver.unRegister();
+        unregisterReceiver(blueToothReceiver);
+    }
+
+    private void cancelDiscovery() {
+        blueToothAdaptor.cancelDiscovery();
+    }
+
+    private void loadUpPreferences() {
+        allowNewDiscovery = preferences.getBoolean(
+                "bluetooth.discovery.allowed", false);
+        discoverySwitch.setChecked(allowNewDiscovery);
+
+        allowSms = preferences.getBoolean("sms.app.allowed", false);
+
+        Set<String> selectedDevices = preferences.getStringSet(
+                "device.selected.set", new HashSet<String>());
+
+        synchronized (bluetoothDevices) {
+            Gson gson = new Gson();
+            for (String deviceSelectedData : selectedDevices) {
+                ScannableDevice device = gson.fromJson(deviceSelectedData,
+                        ScannableDevice.class);
+                boolean isDiscoveredInThisIteration = false;
+                for (ScannableDevice currentDevice : bluetoothDevices) {
+                    if (currentDevice.getAddress().equals(device.getAddress())) {
+                        isDiscoveredInThisIteration = true;
+                        break;
+                    }
+                }
+                if (!isDiscoveredInThisIteration) {
+                    bluetoothDevices.add(device);
+                }
+            }
+        }
     }
 
     private void startBlueToothDiscovery() {
         blueToothAdaptor.startDiscovery();
     }
 
-    private void cancelBlueToothDiscovery() {
-        blueToothAdaptor.cancelDiscovery();
+    private boolean runBlueToothDiscoveryAfter(long runEveryMilliseconds) {
+        return blueToothScanHandler.postDelayed(blueToothReceiverTask,
+                runEveryMilliseconds);
     }
 
-    private void removeCallbacks() {
-        blueToothScanHandler.removeCallbacks(blueToothReceiverTask);
+    private boolean runActionBarInitializationAfter(long runAfterMilliseconds) {
+        return actionBarInitializationHandler.postDelayed(
+                actionBarAndOtherInitialization, runAfterMilliseconds);
     }
 
-    private void dismissDialog() {
-        if (progressScanDialog != null && progressScanDialog.isShowing()) {
-            progressScanDialog.dismiss();
+    private void doCheckForBlueToothAndSetInPreferencesIfAllowed(
+            boolean isChecked, String key, CompoundButton buttonView) {
+        if (!blueToothAdaptor.isEnabled() && isChecked) {
+            showBlueToothDisabledDialog();
+            buttonView.setChecked(false);
+        }
+        else {
+            preferences.edit().putBoolean(key, isChecked).commit();
         }
     }
 
-    private boolean runAfter(long runEveryMilliseconds) {
-        return blueToothScanHandler.postDelayed(blueToothReceiverTask,
-                runEveryMilliseconds);
+    private void showBlueToothDisabledDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("BlueTooth not enabled. Please enable bluetooth!!")
+                .setCancelable(false).setPositiveButton("OK", null);
+        AlertDialog alert = builder.create();
+        alert.show();
+    }
+
+    private void performVisibilityChecksBeforeMakingListViewVisible() {
+        if (bluetoothDevices.size() > 0) {
+            View selectedItemsStatusView = findViewById(R.id.selectedItemsStatusView);
+            selectedItemsStatusView.setVisibility(View.VISIBLE);
+
+            View listView = findViewById(R.id.listView);
+            listView.setVisibility(View.VISIBLE);
+        }
     }
 
 }
