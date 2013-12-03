@@ -1,7 +1,6 @@
 package com.smsbackground;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -31,23 +30,27 @@ import com.google.gson.Gson;
 
 public class MainActivity extends Activity {
 
-    private SharedPreferences preferences;
-    private BluetoothAdapter blueToothAdaptor;
     private ArrayAdapterItem adapter;
     private TextView statusCheckedView;
     private Switch discoverySwitch;
     private Switch actionBarMainSwitch;
+
+    private SharedPreferences preferences;
+
+    private BluetoothAdapter blueToothAdaptor;
+
     private Handler blueToothScanHandler;
     private Handler actionBarInitializationHandler;
 
-    private final String tag = "Bluetooth";
+    private SmsMessageBroadcastReceiver smsMessageBroadcastReceiver;
+
+    private StorageEditor storageEditor;
 
     private final List<ScannableDevice> bluetoothDevices = new ArrayList<ScannableDevice>();
 
+    private final String tag = "Bluetooth";
     private boolean allowNewDiscovery = false;
     private boolean allowSms = false;
-
-    private SmsMessageBroadcastReceiver smsMessageBroadcastReceiver;
 
     private final BroadcastReceiver blueToothReceiver = new BroadcastReceiver() {
 
@@ -87,6 +90,8 @@ public class MainActivity extends Activity {
                         .setName(device.getName() == null ? "<no_name_configured>"
                                 : device.getName());
                 presentDevice.setLastScannedTime(System.currentTimeMillis());
+
+                storageEditor.updateLastScannedTime(presentDevice);
             }
             else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 Log.d(tag, "Discovery is finished .. ");
@@ -193,12 +198,13 @@ public class MainActivity extends Activity {
                 Log.d(tag, "Bluetooth is disabled");
             }
 
-            preferences = getPreferences(MODE_PRIVATE);
-
             statusCheckedView = (TextView) findViewById(R.id.selectedItemsStatusView);
 
+            preferences = getPreferences(MODE_PRIVATE);
+            storageEditor = new PreferenceStorageEditor(preferences);
+
             adapter = new ArrayAdapterItem(this, R.layout.list_view_row_item,
-                    bluetoothDevices, preferences, statusCheckedView);
+                    bluetoothDevices, statusCheckedView, storageEditor);
 
             ListView listView = (ListView) findViewById(R.id.listView);
             listView.setItemsCanFocus(Boolean.FALSE);
@@ -252,14 +258,12 @@ public class MainActivity extends Activity {
     }
 
     private void loadUpPreferences() {
-        allowNewDiscovery = preferences.getBoolean(
-                "bluetooth.discovery.allowed", false);
+        allowNewDiscovery = storageEditor.isDiscoveryScanAllowed();
         discoverySwitch.setChecked(allowNewDiscovery);
 
-        allowSms = preferences.getBoolean("sms.app.allowed", false);
+        allowSms = storageEditor.isSmsAllowed();
 
-        Set<String> selectedDevices = preferences.getStringSet(
-                "device.selected.set", new HashSet<String>());
+        Set<String> selectedDevices = storageEditor.getSelectedDevices();
 
         synchronized (bluetoothDevices) {
             Gson gson = new Gson();
@@ -301,7 +305,7 @@ public class MainActivity extends Activity {
             buttonView.setChecked(false);
         }
         else {
-            preferences.edit().putBoolean(key, isChecked).commit();
+            storageEditor.setBoolean(key, isChecked);
         }
     }
 

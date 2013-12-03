@@ -1,14 +1,9 @@
 package com.smsbackground;
 
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
 import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -20,25 +15,23 @@ import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.TextView;
 
-import com.google.gson.Gson;
-
 public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
 
     private final Context context;
     private final int resource;
     private final List<ScannableDevice> objects;
-    private final SharedPreferences preferences;
     private final TextView statusCheckedView;
+    private final StorageEditor storageEditor;
 
     public ArrayAdapterItem(Context context, int resource,
-            List<ScannableDevice> objects, SharedPreferences preferences,
-            TextView statusCheckedView) {
+            List<ScannableDevice> objects, TextView statusCheckedView,
+            StorageEditor storageEditor) {
         super(context, resource, objects);
         this.context = context;
         this.resource = resource;
         this.objects = objects;
-        this.preferences = preferences;
         this.statusCheckedView = statusCheckedView;
+        this.storageEditor = storageEditor;
     }
 
     static class ViewHolder {
@@ -50,7 +43,7 @@ public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
     public View getView(int position, View convertView, ViewGroup parent) {
         ScannableDevice device = objects.get(position);
 
-        boolean isDevicePresent = isDevicePresent(getSelectedDevices(), device);
+        boolean isDevicePresent = storageEditor.isDevicePresent(device);
 
         CheckBox checkbox = null;
         if (convertView == null) {
@@ -73,7 +66,9 @@ public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
                                     "checked device " + device.getName()
                                             + " checked = " + isChecked);
 
-                            int maxStored = updatePreferences(isChecked, device);
+                            int maxStored = storageEditor
+                                    .updateDeviceStateInStorage(isChecked,
+                                            device);
 
                             String currentSelectedStatus = String
                                     .format(context
@@ -88,7 +83,6 @@ public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
                     });
             if (isDevicePresent) {
                 viewHolder.checkbox.setChecked(isDevicePresent);
-                updateLastScannedTime(device);
             }
         }
 
@@ -107,93 +101,4 @@ public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
         return convertView;
     }
 
-    private boolean isDevicePresent(Set<String> selectedDevices,
-            ScannableDevice device) {
-        boolean found = false;
-
-        Gson gson = new Gson();
-        for (String deviceSelectedData : selectedDevices) {
-            ScannableDevice comparedDevice = gson.fromJson(deviceSelectedData,
-                    ScannableDevice.class);
-            if (comparedDevice.getAddress().equals(device.getAddress())) {
-                found = true;
-                break;
-            }
-        }
-        return found;
-    }
-
-    private Set<String> getSelectedDevices() {
-        return preferences.getStringSet("device.selected.set",
-                new HashSet<String>());
-    }
-
-    private void updateLastScannedTime(ScannableDevice device) {
-        Editor editor = preferences.edit();
-
-        Set<String> copyOfSelectedDevices = new HashSet<String>();
-
-        Gson gson = new Gson();
-
-        Set<String> selectedDevices = getSelectedDevices();
-        for (String selectedDevice : selectedDevices) {
-            ScannableDevice iteratorScannableDevice = gson.fromJson(
-                    selectedDevice, ScannableDevice.class);
-            if (iteratorScannableDevice.getAddress()
-                    .equals(device.getAddress())) {
-                iteratorScannableDevice.setLastScannedTime(device
-                        .getLastScannedTime());
-                selectedDevice = gson.toJson(iteratorScannableDevice,
-                        ScannableDevice.class);
-            }
-            String copyOfSelectedDevice = new String(selectedDevice);
-            copyOfSelectedDevices.add(copyOfSelectedDevice);
-        }
-
-        editor.putStringSet("device.selected.set", copyOfSelectedDevices)
-                .commit();
-    }
-
-    private int updatePreferences(boolean isChecked, ScannableDevice device) {
-        Editor editor = preferences.edit();
-
-        Set<String> selectedDevices = getSelectedDevices();
-        int maxStored = selectedDevices.isEmpty() ? 0 : selectedDevices.size();
-
-        Set<String> copyOfSelectedDevices = new HashSet<String>();
-        for (String selectedDevice : selectedDevices) {
-            String copyOfSelectedDevice = new String(selectedDevice);
-            copyOfSelectedDevices.add(copyOfSelectedDevice);
-        }
-
-        boolean found = isDevicePresent(copyOfSelectedDevices, device);
-
-        Gson gson = new Gson();
-
-        if (isChecked && !found) {
-            String deviceJson = gson.toJson(device, ScannableDevice.class);
-            copyOfSelectedDevices.add(deviceJson);
-        }
-        else if (!isChecked && found) {
-            Iterator<String> iterator = copyOfSelectedDevices.iterator();
-            while (iterator.hasNext()) {
-                String iteratorJson = iterator.next();
-                ScannableDevice iteratorDevice = gson.fromJson(iteratorJson,
-                        ScannableDevice.class);
-
-                if (iteratorDevice.getAddress().equals(device.getAddress())) {
-                    iterator.remove();
-                    break;
-                }
-            }
-        }
-
-        Log.d("Bluetooth", "Selected Devices Old Actual Size = " + maxStored
-                + " New Actual Size = " + copyOfSelectedDevices.size());
-
-        editor.putStringSet("device.selected.set", copyOfSelectedDevices)
-                .commit();
-
-        return copyOfSelectedDevices.size();
-    }
 }
