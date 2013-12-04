@@ -82,9 +82,7 @@ public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
                             statusCheckedView.setVisibility(View.VISIBLE);
                         }
                     });
-            if (isDevicePresent) {
-                viewHolder.checkbox.setChecked(isDevicePresent);
-            }
+            viewHolder.checkbox.setChecked(isDevicePresent);
         }
 
         TextView textViewItem = (TextView) convertView
