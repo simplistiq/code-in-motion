@@ -218,7 +218,7 @@ public class MainActivity extends Activity {
             registerReceiver(blueToothReceiver, filter);
 
             smsMessageBroadcastReceiver = new SmsMessageBroadcastReceiver(
-                    getApplicationContext(), preferences);
+                    getApplicationContext(), storageEditor);
 
             if (blueToothScanHandler == null) {
                 blueToothScanHandler = new Handler();

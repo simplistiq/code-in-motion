@@ -7,7 +7,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
@@ -19,12 +18,12 @@ public class SmsMessageBroadcastReceiver extends BroadcastReceiver {
 
     private final SmsManager smsManager;
     private final Context context;
-    private final SharedPreferences sharedPreferences;
+    private final StorageEditor storageEditor;
 
     public SmsMessageBroadcastReceiver(Context context,
-            SharedPreferences sharedPreferences) {
+            StorageEditor storageEditor) {
         this.context = context;
-        this.sharedPreferences = sharedPreferences;
+        this.storageEditor = storageEditor;
         this.smsManager = SmsManager.getDefault();
     }
 
@@ -81,8 +80,7 @@ public class SmsMessageBroadcastReceiver extends BroadcastReceiver {
     private boolean findIfInProximity() {
         boolean isInProximity = false;
 
-        Set<String> selectedDevices = sharedPreferences.getStringSet(
-                "device.selected.set", new HashSet<String>());
+        Set<String> selectedDevices = storageEditor.getSelectedDevices();
 
         Gson gson = new Gson();
         for (String deviceJson : selectedDevices) {
@@ -97,7 +95,7 @@ public class SmsMessageBroadcastReceiver extends BroadcastReceiver {
                     + device.getLastScannedTime().longValue()
                     + " Difference = " + elapsedTimeWhenlastSeen);
 
-            if (elapsedTimeWhenlastSeen < 60000) {
+            if (elapsedTimeWhenlastSeen < 120000) {
                 isInProximity = true;
                 break;
             }

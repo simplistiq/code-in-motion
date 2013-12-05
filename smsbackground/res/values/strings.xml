@@ -2,12 +2,10 @@
 <resources>
 
     <string name="app_name">Auto Reply SMS</string>
-    <string name="global_switch">Turn Bluetooth SMS</string>   
-    <string name="scan_select_message">Please select the devices you want the app to auto-reply to SMS when driving. The application would
-        automatically sent the configured SMS reply if any of these devices are detectable when an SMS arrives.</string>
+    <string name="global_switch">Auto Reply SMS</string>   
     <string name="welcome_message_part_1">SMS REPLY</string>
-    <string name="welcome_message_part_2">Now, start your car and select the devices by starting the discovery. \n\nAny time your phone is in the 
-        vicinity of these devices all incoming SMS would be automatically replied with your reply message.</string>       
+    <string name="welcome_message_part_2">1. Turn the Global Auto Reply SMS switch ON.\n\n2. Now, start your car and select the bluetooth devices by scanning for them.\n\n3. All SMS
+        are replied automatically when in vicinity for 2 minutes. You can get to your messages later. </string>              
     <string name="sms_text_title_message">SMS REPLY</string>
     <string name="bluetooth_device_title_message">Devices found</string>
     <string name="text_hint">I am driving right now. </string>         

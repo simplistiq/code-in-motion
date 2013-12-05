@@ -3,27 +3,32 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent" 
     android:padding="10dp">
+        
+    <CheckBox
+        android:id="@+id/textViewCheckBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:focusable="false" />
     
     <TextView 
         android:id="@+id/textViewItem"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
+        android:layout_toRightOf="@+id/textViewCheckBox"
+        android:paddingLeft="5dp"
         android:textSize="15sp"/>
     
     <TextView 
         android:id="@+id/textViewItemDetectionTimeInterval"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:paddingLeft="5dp"        
         android:layout_below="@id/textViewItem"      
+        android:layout_toRightOf="@+id/textViewCheckBox"        
         android:textColor="#B0B0B0"
         android:textSize="12sp"/>
-
-    <CheckBox
-        android:id="@+id/textViewCheckBox"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentRight="true"
-        android:focusable="false" />
+    
 
 </RelativeLayout>

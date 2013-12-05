@@ -34,10 +34,28 @@ public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
         this.storageEditor = storageEditor;
     }
 
-    static class ViewHolder {
-        protected ScannableDevice device;
-        protected CheckBox checkbox;
-    }
+    private final OnCheckedChangeListener onCheckedChangeListener = new OnCheckedChangeListener() {
+
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView,
+                boolean isChecked) {
+            ScannableDevice device = (ScannableDevice) buttonView.getTag();
+            device.setScanAllowed(buttonView.isChecked());
+
+            Log.d("Bluetooth", "checked device " + device.getName()
+                    + " checked = " + isChecked);
+
+            int maxStored = storageEditor.updateDeviceStateInStorage(isChecked,
+                    device);
+
+            String currentSelectedStatus = String.format(context.getResources()
+                    .getString(R.string.number_of_bluetooth_devices_selected),
+                    maxStored);
+
+            statusCheckedView.setText(currentSelectedStatus);
+            statusCheckedView.setVisibility(View.VISIBLE);
+        }
+    };
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
@@ -45,44 +63,9 @@ public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
 
         boolean isDevicePresent = storageEditor.isDevicePresent(device);
 
-        CheckBox checkbox = null;
         if (convertView == null) {
             LayoutInflater inflater = ((Activity) context).getLayoutInflater();
             convertView = inflater.inflate(resource, parent, false);
-
-            final ViewHolder viewHolder = new ViewHolder();
-            viewHolder.device = device;
-            checkbox = (CheckBox) convertView
-                    .findViewById(R.id.textViewCheckBox);
-            viewHolder.checkbox = checkbox;
-            viewHolder.checkbox
-                    .setOnCheckedChangeListener(new OnCheckedChangeListener() {
-
-                        @Override
-                        public void onCheckedChanged(CompoundButton buttonView,
-                                boolean isChecked) {
-                            ScannableDevice device = viewHolder.device;
-                            device.setScanAllowed(buttonView.isChecked());
-                            Log.d("Bluetooth",
-                                    "checked device " + device.getName()
-                                            + " checked = " + isChecked);
-
-                            int maxStored = storageEditor
-                                    .updateDeviceStateInStorage(isChecked,
-                                            device);
-
-                            String currentSelectedStatus = String
-                                    .format(context
-                                            .getResources()
-                                            .getString(
-                                                    R.string.number_of_bluetooth_devices_selected),
-                                            maxStored);
-
-                            statusCheckedView.setText(currentSelectedStatus);
-                            statusCheckedView.setVisibility(View.VISIBLE);
-                        }
-                    });
-            viewHolder.checkbox.setChecked(isDevicePresent);
         }
 
         TextView textViewItem = (TextView) convertView
@@ -95,6 +78,12 @@ public class ArrayAdapterItem extends ArrayAdapter<ScannableDevice> {
         textViewDetectedTimeItem.setText(DateUtils.getRelativeTimeSpanString(
                 device.getLastScannedTime(), System.currentTimeMillis(),
                 DateUtils.SECOND_IN_MILLIS));
+
+        CheckBox checkbox = (CheckBox) convertView
+                .findViewById(R.id.textViewCheckBox);
+        checkbox.setTag(device);
+        checkbox.setOnCheckedChangeListener(onCheckedChangeListener);
+        checkbox.setChecked(isDevicePresent);
 
         return convertView;
     }
