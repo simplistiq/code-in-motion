@@ -16,7 +16,7 @@
     
     <application
         android:allowBackup="true"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@drawable/safe_driving_tips"
         android:theme="@style/AppTheme">
         <activity
             android:name="com.smsbackground.MainActivity"

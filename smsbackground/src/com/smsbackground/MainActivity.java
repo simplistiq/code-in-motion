@@ -94,7 +94,7 @@ public class MainActivity extends Activity {
             }
             else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 Log.d(tag, "Discovery is finished .. ");
-                runBlueToothDiscoveryAfter(10000);
+                runBlueToothDiscoveryAfterIfAllowed(10000);
             }
             performVisibilityChecksBeforeMakingListViewVisible();
             adapter.notifyDataSetChanged();
@@ -140,7 +140,7 @@ public class MainActivity extends Activity {
             doCheckForBlueToothAndSetInPreferencesIfAllowed(isChecked,
                     "bluetooth.discovery.allowed", buttonView);
             if (isChecked) {
-                runBlueToothDiscoveryAfter(1000);
+                runBlueToothDiscoveryAfterIfAllowed(1000);
             }
         }
     };
@@ -150,6 +150,7 @@ public class MainActivity extends Activity {
         @Override
         public void onCheckedChanged(CompoundButton buttonView,
                 boolean isChecked) {
+            allowSms = isChecked;
             doCheckForBlueToothAndSetInPreferencesIfAllowed(isChecked,
                     "sms.app.allowed", buttonView);
             if (isChecked) {
@@ -239,9 +240,7 @@ public class MainActivity extends Activity {
 
         loadUpPreferences();
 
-        if (allowSms) {
-            runBlueToothDiscoveryAfter(10000);
-        }
+        runBlueToothDiscoveryAfterIfAllowed(10000);
     }
 
     @Override
@@ -287,9 +286,11 @@ public class MainActivity extends Activity {
         blueToothAdaptor.startDiscovery();
     }
 
-    private boolean runBlueToothDiscoveryAfter(long runEveryMilliseconds) {
-        return blueToothScanHandler.postDelayed(blueToothReceiverTask,
-                runEveryMilliseconds);
+    private void runBlueToothDiscoveryAfterIfAllowed(long runEveryMilliseconds) {
+        if (allowSms) {
+            blueToothScanHandler.postDelayed(blueToothReceiverTask,
+                    runEveryMilliseconds);
+        }
     }
 
     private boolean runActionBarInitializationAfter(long runAfterMilliseconds) {
